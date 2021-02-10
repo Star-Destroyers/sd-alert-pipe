@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "sd-alert-pipe"
+version = "0.1.0"
+description = "A pipeline for reading alert streams for possible Star Destroyers."
+authors = ["Austin Riba <austin@m51.io>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+httpx = "^0.16.1"
+pydantic = "^1.7.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+ipython = "^7.20.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
