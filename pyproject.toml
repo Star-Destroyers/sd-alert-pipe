@@ -10,7 +10,7 @@ httpx = "^0.16.1"
 pydantic = "^1.7.3"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+pytest = "^6.2"
 ipython = "^7.20.0"
 
 [build-system]
