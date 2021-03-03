@@ -1,7 +1,16 @@
+from typing import Optional
 import httpx
 import json
+from pydantic import BaseModel, HttpUrl
 
-from .common import Alert
+
+class AntaresResult(BaseModel):
+    name: str
+    broker_id: str
+    url: HttpUrl
+    ra: float
+    dec: float
+    data: Optional[dict]
 
 
 class AntaresService:
@@ -17,7 +26,7 @@ class AntaresService:
     def __init__(self, *args, **kwargs) -> None:
         self.api_root = 'https://api.antares.noirlab.edu/v1/'
 
-    def get_alert(self, objectId: str) -> Alert:
+    async def get_result(self, objectId: str) -> AntaresResult:
         query = {
                     "query": {
                         "bool": {
@@ -32,18 +41,17 @@ class AntaresService:
             "sort": "-properties.newest_alert_observation_time",
             "elasticsearch_query[locus_listing]": json.dumps(query),
         }
+        async with httpx.AsyncClient() as client:
+            r = await client.get(self.api_root + '/loci', params=params)
+            r.raise_for_status()
+            d = r.json()
+            alert = AntaresResult(
+                name=d['data'][0]['attributes']['properties']['ztf_object_id'],
+                broker_id=d['data'][0]['id'],
+                url=d['links']['self'],
+                ra=d['data'][0]['attributes']['ra'],
+                dec=d['data'][0]['attributes']['dec'],
+                data=d
+            )
 
-        r = httpx.get(self.api_root + '/loci', params=params)
-        r.raise_for_status()
-        d = r.json()
-        alert = Alert(
-            name=d['data'][0]['attributes']['properties']['ztf_object_id'],
-            broker='ANTARES',
-            broker_id=d['data'][0]['id'],
-            url=d['links']['self'],
-            ra=d['data'][0]['attributes']['ra'],
-            dec=d['data'][0]['attributes']['dec'],
-            data=d
-        )
-
-        return alert
+            return alert
