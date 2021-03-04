@@ -1,7 +1,12 @@
 from typing import Optional
 import httpx
 import json
+import logging
 from pydantic import BaseModel, HttpUrl
+
+from .exceptions import APIError, NoResultsError
+
+logger = logging.getLogger(__name__)
 
 
 class AntaresResult(BaseModel):
@@ -22,11 +27,13 @@ class AntaresService:
     But avoiding dependencies such as kafka and numpy, etc
     was desired.
     """
+    broker = 'antares'
 
     def __init__(self, *args, **kwargs) -> None:
         self.api_root = 'https://api.antares.noirlab.edu/v1/'
 
     async def get_result(self, objectId: str) -> AntaresResult:
+        logger.info('getting ANTARES result')
         query = {
                     "query": {
                         "bool": {
@@ -42,10 +49,19 @@ class AntaresService:
             "elasticsearch_query[locus_listing]": json.dumps(query),
         }
         async with httpx.AsyncClient() as client:
-            r = await client.get(self.api_root + '/loci', params=params)
-            r.raise_for_status()
+            r = await client.get(self.api_root + 'loci', params=params)
+            try:
+                r.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                raise APIError(e)
             d = r.json()
-            alert = AntaresResult(
+
+            if len(d['data']) < 1:
+                raise NoResultsError
+
+            logger.info('finished getting Antares result')
+
+            return AntaresResult(
                 name=d['data'][0]['attributes']['properties']['ztf_object_id'],
                 broker_id=d['data'][0]['id'],
                 url=d['links']['self'],
@@ -53,5 +69,3 @@ class AntaresService:
                 dec=d['data'][0]['attributes']['dec'],
                 data=d
             )
-
-            return alert

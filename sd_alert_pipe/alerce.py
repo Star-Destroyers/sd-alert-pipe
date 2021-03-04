@@ -1,6 +1,11 @@
 from typing import Optional
 import httpx
+import logging
 from pydantic import BaseModel, HttpUrl
+
+from .exceptions import APIError
+
+logger = logging.getLogger(__name__)
 
 
 class AlerceResult(BaseModel):
@@ -16,6 +21,8 @@ class AlerceResult(BaseModel):
 class AlerceService:
     """Alerce broker interface.
     """
+    broker = 'alerce'
+
     def __init__(self):
         self.api_root = 'https://ztf.alerce.online'
 
@@ -23,8 +30,14 @@ class AlerceService:
         return 'https://alerce.online/object/' + objectId
 
     async def get_result(self, objectId: str) -> AlerceResult:
-        alert = await self.get_alert(objectId)
-        classification = await self.get_probabilities(objectId)
+        logger.info('Getting alerce result.')
+        try:
+            alert = await self.get_alert(objectId)
+            classification = await self.get_probabilities(objectId)
+        except httpx.HTTPStatusError as e:
+            raise APIError(e)
+
+        logger.info('Finished getting alerce result.')
         return AlerceResult(
             name=alert['oid'],
             broker_id=alert['oid'],

@@ -6,6 +6,7 @@ from pydantic import BaseModel, HttpUrl
 from typing import Optional
 
 from .config import settings
+from .exceptions import APIError, NoResultsError
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,8 @@ class LasairResult(BaseModel):
 class LasairService:
     """Lasair broker service.
     """
+    broker = 'lasair'
+
     def __init__(self):
         self.api_key = settings.LASAIR_API_KEY
         self.api_root = 'https://lasair-iris.roe.ac.uk'
@@ -41,8 +44,10 @@ class LasairService:
             return await client.post(self.api_root + '/api/query/', data=data, headers=self.headers)
 
     async def get_result(self, objectId: str) -> LasairResult:
+        logger.info('getting lasair result.')
         d = await self.get_alert(objectId)
         classification = await self.get_probabilities(objectId)
+        logger.info('lasair done')
         return LasairResult(
             broker_id=d['objectId'],
             url=self.broker_url(d['objectId']),
@@ -62,7 +67,14 @@ class LasairService:
         conditions = f'objects.objectId="{objectId}"'
         tables = 'objects'
         r = await self._query(selected, tables, conditions)
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise APIError(e)
+
+        if len(r.json()) < 1:
+            raise NoResultsError
+
         return r.json()[0]
 
     async def fetch_watchlist(self, watchlist: int) -> List[LasairResult]:
@@ -93,6 +105,11 @@ class LasairService:
         async with httpx.AsyncClient() as client:
             data = {'objectIds': objectId, 'lite': True}
             r = await client.post(self.api_root + '/api/sherlock/objects/', json=data, headers=self.headers)
+            try:
+                r.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                raise APIError(e)
+
             return r.json()
 
     async def stored_query(self, query_name: str) -> dict:
