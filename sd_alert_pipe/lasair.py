@@ -26,8 +26,8 @@ class LasairService:
     """
     broker = 'lasair'
 
-    def __init__(self):
-        self.api_key = settings.LASAIR_API_KEY
+    def __init__(self, api_key=None):
+        self.api_key = api_key or settings.LASAIR_API_KEY
         self.api_root = 'https://lasair-iris.roe.ac.uk'
         self.headers = {'Authorization': f'Token {self.api_key}'}
 
