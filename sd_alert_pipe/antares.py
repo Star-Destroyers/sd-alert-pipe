@@ -32,6 +32,9 @@ class AntaresService:
     def __init__(self, *args, **kwargs) -> None:
         self.api_root = 'https://api.antares.noirlab.edu/v1/'
 
+    def broker_url(self, antaresId: str) -> str:
+        return f'https://antares.noirlab.edu/loci/{antaresId}'
+
     async def get_result(self, objectId: str) -> AntaresResult:
         logger.info('getting ANTARES result')
         query = {
@@ -64,7 +67,7 @@ class AntaresService:
             return AntaresResult(
                 name=d['data'][0]['attributes']['properties']['ztf_object_id'],
                 broker_id=d['data'][0]['id'],
-                url=d['links']['self'],
+                url=self.broker_url(d['data'][0]['id']),
                 ra=d['data'][0]['attributes']['ra'],
                 dec=d['data'][0]['attributes']['dec'],
                 data=d
