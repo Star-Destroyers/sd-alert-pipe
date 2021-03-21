@@ -6,6 +6,8 @@ Currently supported brokers:
 * [Lasair](sd_alert_pipe/lasair.py)
 * [Alerce](sd_alert_pipe/alerce.py)
 * [Antares](sd_alert_pipe/antares.py)
+* [MARS](sd_alert_pipe/mars.py)
+* [TNS](sd_alert_pipe/tns.py)
 
 Each of the above modules defines a service which contains various methods for fetching data from the respective APIs, usually for a specific ZTF name.
 
