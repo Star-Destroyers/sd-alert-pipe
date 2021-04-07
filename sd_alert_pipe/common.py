@@ -16,8 +16,14 @@ class FailedResult(BaseModel):
     error: str
 
 
+class CommonResult(BaseModel):
+    ra: float
+    dec: float
+
+
 class RootResult(BaseModel):
     name: str
+    common: Optional[CommonResult]
     lasair: Optional[LasairResult]
     alerce: Optional[AlerceResult]
     antares: Optional[AntaresResult]
@@ -27,6 +33,18 @@ class RootResult(BaseModel):
     @property
     def has_failed(self):
         return len(self.failed) > 0
+
+    def set_general(self):
+        if self.mars:
+            self.common = CommonResult(ra=self.mars.ra, dec=self.mars.dec)
+        elif self.lasair:
+            self.common = CommonResult(ra=self.lasair.ra, dec=self.lasair.dec)
+        elif self.alerce:
+            self.common = CommonResult(ra=self.alerce.ra, dec=self.alerce.dec)
+        elif self.antares:
+            self.common = CommonResult(ra=self.antares.ra, dec=self.antares.dec)
+        else:
+            self.common = None
 
 
 async def gather_data(name: str) -> RootResult:
@@ -45,5 +63,5 @@ async def gather_data(name: str) -> RootResult:
             rr.failed.append(fr)
         else:
             setattr(rr, ENABLED_SERVICES[idx].broker, result)
-
+    rr.set_general()
     return rr
