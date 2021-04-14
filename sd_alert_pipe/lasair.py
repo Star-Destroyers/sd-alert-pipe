@@ -10,6 +10,8 @@ from .exceptions import APIError, NoResultsError
 
 logger = logging.getLogger(__name__)
 
+DATETIME_FORMAT: str = '%Y-%m-%d %H:%M:%S'
+
 
 class LasairResult(BaseModel):
     name: str
@@ -110,7 +112,13 @@ class LasairService:
             except httpx.HTTPStatusError as e:
                 raise APIError(e)
 
-            return r.json()
+            result = r.json()
+
+            return {
+                'type': result['classifications'][objectId][0],
+                'description': result['classifications'][objectId][1],
+                'crossmatches': result['crossmatches']
+            }
 
     async def stored_query(self, query_name: str) -> dict:
         async with httpx.AsyncClient() as client:
