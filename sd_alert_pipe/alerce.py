@@ -8,7 +8,15 @@ from .exceptions import APIError
 logger = logging.getLogger(__name__)
 
 
-class Probabilities(BaseModel):
+class EarlyProbabilities(BaseModel):
+    agn: float
+    sn: float
+    vs: float
+    asteroid: float
+    bogus: float
+
+
+class LateProbabilities(BaseModel):
     agn_i: float
     blazar: float
     cv_nova: float
@@ -29,8 +37,8 @@ class Probabilities(BaseModel):
 class Classification(BaseModel):
     type: str
     probability: float
-    late: Optional[Probabilities]
-    early: Optional[Probabilities]
+    late: Optional[LateProbabilities]
+    early: Optional[EarlyProbabilities]
 
 
 class AlerceResult(BaseModel):
@@ -87,8 +95,8 @@ class AlerceService:
             d = r.json()
             early_raw = d['result']['probabilities']['early_classifier']
             late_raw = d['result']['probabilities']['late_classifier']
-            early = {k.lower().replace('/', '_').replace('-', '_').replace('_prob', ''): v for k, v in early_raw.items()}
-            late = {k.lower().replace('/', '_').replace('-', '_').replace('_prob', ''): v for k, v in late_raw.items()}
+            early = {k.lower().replace('/', '_').replace('-', '_').replace('_prob', ''): v for k, v in early_raw.items() if v}
+            late = {k.lower().replace('/', '_').replace('-', '_').replace('_prob', ''): v for k, v in late_raw.items() if v}
             early.pop('oid', '')
             late.pop('oid', '')
             early_max = max(early, key=early.get) if early else ''
@@ -102,9 +110,8 @@ class AlerceService:
             else:
                 ctype = 'None'
                 probability = 0
-
-            early_prob = Probabilities(**early) if early else None
-            late_prob = Probabilities(**late) if late else None
+            early_prob = EarlyProbabilities(**early) if early else None
+            late_prob = LateProbabilities(**late) if late else None
 
             return Classification(
                 type=ctype, probability=probability, early=early_prob, late=late_prob

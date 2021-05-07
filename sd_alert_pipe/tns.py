@@ -2,11 +2,18 @@ from typing import List
 import logging
 import httpx
 import json
+from pydantic import BaseModel
 
 from .config import settings
 from .exceptions import APIError, NoResultsError
 
 logger = logging.getLogger(__name__)
+
+
+class TNSMatch(BaseModel):
+    objname: str
+    prefix: str
+    objid: int
 
 
 class TNSService:
@@ -20,7 +27,7 @@ class TNSService:
         else:
             self.api_root = 'https://www.wis-tns.org'
 
-    async def cone_search(self, ra: float, dec: float) -> List[dict]:
+    async def cone_search(self, ra: float, dec: float) -> List[TNSMatch]:
         payload = {'api_key': self.api_key, 'data': json.dumps({'ra': ra, 'dec': dec})}
 
         async with httpx.AsyncClient() as client:
@@ -35,7 +42,7 @@ class TNSService:
             if len(d['data']['reply']) < 1:
                 raise NoResultsError
 
-            return d['data']['reply']
+            return [TNSMatch(**r) for r in d['data']['reply']]
 
     async def get_tns_object(self, objname: str) -> dict:
         payload = {'api_key': self.api_key, 'data': json.dumps({'objname': objname, 'photometry': 1})}
