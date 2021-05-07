@@ -8,13 +8,38 @@ from .exceptions import APIError
 logger = logging.getLogger(__name__)
 
 
+class Probabilities(BaseModel):
+    agn_i: float
+    blazar: float
+    cv_nova: float
+    snia: float
+    snibc: float
+    snii: float
+    sniin: float
+    slsn: float
+    ebsd_d: float
+    ebc: float
+    dsct: float
+    rrl: float
+    ceph: float
+    lpv: float
+    periodic_other: float
+
+
+class Classification(BaseModel):
+    type: str
+    probability: float
+    late: Optional[Probabilities]
+    early: Optional[Probabilities]
+
+
 class AlerceResult(BaseModel):
     name: str
     broker_id: str
     url: HttpUrl
     ra: float
     dec: float
-    classification: dict
+    classification: Classification
     data: Optional[dict]
 
 
@@ -55,12 +80,32 @@ class AlerceService:
             d = r.json()
             return d['result']['stats']
 
-    async def get_probabilities(self, objectId: str) -> dict:
-        """Returns a dictionary of type -> probability ML classifications
-        for this object.
-        """
+    async def get_probabilities(self, objectId: str) -> Classification:
         async with httpx.AsyncClient() as client:
             r = await client.post(self.api_root + '/get_probabilities', json={'oid': objectId})
             r.raise_for_status()
             d = r.json()
-            return d['result']['probabilities']
+            early_raw = d['result']['probabilities']['early_classifier']
+            late_raw = d['result']['probabilities']['late_classifier']
+            early = {k.lower().replace('/', '_').replace('-', '_').replace('_prob', ''): v for k, v in early_raw.items()}
+            late = {k.lower().replace('/', '_').replace('-', '_').replace('_prob', ''): v for k, v in late_raw.items()}
+            early.pop('oid', '')
+            late.pop('oid', '')
+            early_max = max(early, key=early.get) if early else ''
+            late_max = max(late, key=late.get) if late else ''
+            if late_max:
+                ctype = late_max
+                probability = late[late_max]
+            elif early_max:
+                ctype = early_max
+                probability = early[early_max]
+            else:
+                ctype = 'None'
+                probability = 0
+
+            early_prob = Probabilities(**early) if early else None
+            late_prob = Probabilities(**late) if late else None
+
+            return Classification(
+                type=ctype, probability=probability, early=early_prob, late=late_prob
+            )

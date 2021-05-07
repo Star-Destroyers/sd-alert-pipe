@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 import httpx
 import json
 import logging
@@ -15,6 +15,7 @@ class AntaresResult(BaseModel):
     url: HttpUrl
     ra: float
     dec: float
+    crossmatch: List[str]
     data: Optional[dict]
 
 
@@ -70,5 +71,6 @@ class AntaresService:
                 url=self.broker_url(d['data'][0]['id']),
                 ra=d['data'][0]['attributes']['ra'],
                 dec=d['data'][0]['attributes']['dec'],
+                crossmatch=d['data'][0]['attributes']['catalogs'],
                 data=d
             )

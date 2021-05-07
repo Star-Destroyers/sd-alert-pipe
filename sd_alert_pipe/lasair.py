@@ -13,13 +13,51 @@ logger = logging.getLogger(__name__)
 DATETIME_FORMAT: str = '%Y-%m-%d %H:%M:%S'
 
 
+class Crossmatch(BaseModel):
+    transient_object_id: str
+    association_type: str
+    catalogue_object_id: str
+    catalogue_object_type: str
+    catalogue_table_name: Optional[str] = ''
+    raDeg: float
+    decDeg: float
+    separationArcsec: float
+    northSeparationArcsec: float
+    eastSeparationArcsec: float
+    physical_separation_kpc: Optional[float]
+    direct_distance: Optional[float]
+    distance: Optional[float]
+    z: Optional[float]
+    photoZ: Optional[float]
+    photoZErr: Optional[float]
+    Mag: float
+    MagFilter: str
+    MagErr: Optional[float]
+    classificationReliability: int
+
+
+class Classification(BaseModel):
+    type: str
+    description: str
+    crossmatches: List[Crossmatch]
+
+
 class LasairResult(BaseModel):
     name: str
     broker_id: str
     url: HttpUrl
     ra: float
     dec: float
+    rmag: float
+    magrmax: float
+    magrmin: float
+    magrmean: float
+    gmag: float
+    maggmax: float
+    maggmin: float
+    maggmean: float
     classification: dict
+
     data: Optional[dict]
 
 
@@ -57,7 +95,8 @@ class LasairService:
             ra=d['ramean'],
             dec=d['decmean'],
             classification=classification,
-            data=d
+            data=d,
+            **d
         )
 
     async def get_alert(self, objectId: str) -> dict:
@@ -103,7 +142,7 @@ class LasairService:
             ) for result in r.json()
         ]
 
-    async def get_probabilities(self, objectId: str) -> dict:
+    async def get_probabilities(self, objectId: str) -> Classification:
         async with httpx.AsyncClient() as client:
             data = {'objectIds': objectId, 'lite': True}
             r = await client.post(self.api_root + '/api/sherlock/objects/', json=data, headers=self.headers)
@@ -114,11 +153,11 @@ class LasairService:
 
             result = r.json()
 
-            return {
-                'type': result['classifications'][objectId][0],
-                'description': result['classifications'][objectId][1],
-                'crossmatches': result['crossmatches']
-            }
+            return Classification(
+                type=result['classifications'][objectId][0],
+                description=result['classifications'][objectId][1],
+                crossmatches=[Crossmatch(**r) for r in result['crossmatches']]
+            )
 
     async def stored_query(self, query_name: str) -> dict:
         async with httpx.AsyncClient() as client:
