@@ -28,12 +28,12 @@ class AlerceResult(BaseModel):
 
 
 class AlerceService:
-    """Alerce broker interface.
-    """
+    """Alerce broker interface."""
+
     broker = 'alerce'
 
     def __init__(self):
-        self.api_root = 'http://api.alerce.online/ztf/v1/'
+        self.api_root = 'https://api.alerce.online/ztf/v1/'
 
     def get_url(self, objectId: str) -> str:
         return 'https://alerce.online/object/' + objectId
@@ -54,7 +54,7 @@ class AlerceService:
             ra=alert['meanra'],
             dec=alert['meandec'],
             classifications=classification,
-            data=alert
+            data=alert,
         )
 
     async def get_alert(self, objectId: str) -> dict:
@@ -69,7 +69,9 @@ class AlerceService:
             r = await client.get(f'{self.api_root}objects/{objectId}/probabilities')
             r.raise_for_status()
             d = r.json()
-            classifications: List[Classification] = [Classification(**classification) for classification in d]
+            classifications: List[Classification] = [
+                Classification(**classification) for classification in d
+            ]
             classifications.sort(key=attrgetter('probability'), reverse=True)
             classifications.sort(key=attrgetter('ranking'))
 
